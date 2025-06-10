@@ -41,7 +41,7 @@ func GetUserInput() (string, []string, error) {
 				trimmedPath := strings.TrimSpace(path)
 				if trimmedPath != "" {
 					// encodedImage, err := encodeImageToBase64(path)
-					encodedImage, err := encodeImageToString(trimmedPath)
+					encodedImage, err := encodeImageToStringTryAgain(trimmedPath)
 					if err != nil {
 						return "", nil, fmt.Errorf("failed to encode image %s: %v", path, err)
 					}
@@ -52,6 +52,18 @@ func GetUserInput() (string, []string, error) {
 	}
 
 	return prompt, imageByteStrings, err
+}
+
+func encodeImageToStringTryAgain(imagePath string) (string, error) {
+	bytes, err := os.ReadFile(imagePath)
+	if err != nil {
+		panic(err)
+	}
+	pdfString := base64.StdEncoding.EncodeToString(bytes)
+
+	// Now you have the entire PDF as a string
+	fmt.Printf("PDF content as string length: %d\n", len(pdfString))
+	return pdfString, err
 }
 
 func encodeImageToString(imagePath string) (string, error) {

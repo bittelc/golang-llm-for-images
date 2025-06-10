@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 type Request struct {
@@ -42,5 +44,6 @@ func ReqOllama(url string, ollamaReq Request) (*Response, error) {
 	defer httpResp.Body.Close()
 	ollamaResp := Response{}
 	err = json.NewDecoder(httpResp.Body).Decode(&ollamaResp)
+	spew.Dump(httpResp.Body)
 	return &ollamaResp, err
 }
