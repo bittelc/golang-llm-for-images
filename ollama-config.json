@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "excludedTools": ["delete_file"]
+    },
+    "web-search": {
+      "command": "node",
+      "args": ["/Users/bittelc/workspace/web-search-main/build/index.js"]
+    }
+  }
+}
