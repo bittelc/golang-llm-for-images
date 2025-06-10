@@ -11,14 +11,14 @@ type Request struct {
 	Model    string    `json:"model"`
 	Messages []Message `json:"messages"`
 	Stream   bool      `json:"stream"`
+	Think    bool      `json:"think"`
 }
 
 type Message struct {
-	Role      string `json:"role"`
-	Content   string `json:"content"`
-	Images    string `json:"images"`
-	ToolCalls string `json:"tool_calls"`
-	Thinking  string `json:"thinking"`
+	Role      string   `json:"role"`
+	Content   string   `json:"content"`
+	Images    []string `json:"images"`
+	ToolCalls []string `json:"tool_calls"`
 }
 
 type Response struct {
