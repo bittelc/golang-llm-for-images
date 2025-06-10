@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	input "golang-ai-server/getInput"
+	input "golang-ai-server/input"
 	"golang-ai-server/ollama"
 	"os"
 	"time"
