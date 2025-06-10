@@ -21,28 +21,27 @@ func GetUserInput() (string, []string, error) {
 	}
 
 	// Enable image attachment
-	fmt.Print("Path to images, seperated by commas, limit of 3 (optional): ")
+	fmt.Print("Path to images, seperated by commas, limit of 5 (optional): ")
 	imageInput, err := reader.ReadString('\n')
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Parse comma-separated image paths
-	var imagePaths []string
 	var imageByteStrings []string
 	if len(imageInput) > 1 { // Check if there's actual input beyond just newline
 		imageInput = imageInput[:len(imageInput)-1] // Remove trailing newline
 		if imageInput != "" {
 			// Split by comma and trim whitespace
 			paths := strings.Split(imageInput, ",")
-			if len(paths) > 3 {
+			if len(paths) > 5 {
 				return "", nil, fmt.Errorf("too many images provided")
 			}
 			for _, path := range paths {
 				trimmedPath := strings.TrimSpace(path)
 				if trimmedPath != "" {
-					imagePaths = append(imagePaths, trimmedPath)
-					encodedImage, err := encodeImageToBase64(path)
+					// encodedImage, err := encodeImageToBase64(path)
+					encodedImage, err := encodeImageToString(trimmedPath)
 					if err != nil {
 						return "", nil, fmt.Errorf("failed to encode image %s: %v", path, err)
 					}
@@ -53,6 +52,37 @@ func GetUserInput() (string, []string, error) {
 	}
 
 	return prompt, imageByteStrings, err
+}
+
+func encodeImageToString(imagePath string) (string, error) {
+	f, err := os.Open(imagePath)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	// Get file info to allocate exact buffer size
+	stat, err := f.Stat()
+	if err != nil {
+		panic(err)
+	}
+
+	size := stat.Size()
+	buf := make([]byte, size)
+
+	// Read the entire file at once (you can also use io.ReadAll)
+	_, err = io.ReadFull(f, buf)
+	if err != nil {
+		panic(err)
+	}
+
+	// Convert []byte to string
+	// pdfString := string(buf)
+	pdfString := base64.StdEncoding.EncodeToString(buf)
+
+	// Now you have the entire PDF as a string
+	fmt.Printf("PDF content as string length: %d\n", len(pdfString))
+	return pdfString, err
 }
 
 func encodeImageToBase64(imagePath string) (string, error) {

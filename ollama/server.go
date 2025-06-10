@@ -8,30 +8,21 @@ import (
 )
 
 type Request struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
-	Stream   bool      `json:"stream"`
-	Think    bool      `json:"think"`
-}
-
-type Message struct {
-	Role      string   `json:"role"`
-	Content   string   `json:"content"`
+	Model     string   `json:"model"`
+	Prompt    string   `json:"prompt"`
+	Stream    bool     `json:"stream"`
+	Think     bool     `json:"think"`
 	Images    []string `json:"images"`
+	Content   string   `json:"content"`
 	ToolCalls []string `json:"tool_calls"`
 }
 
 type Response struct {
-	Model              string    `json:"model"`
-	CreatedAt          time.Time `json:"created_at"`
-	Message            Message   `json:"message"`
-	Done               bool      `json:"done"`
-	TotalDuration      int64     `json:"total_duration"`
-	LoadDuration       int       `json:"load_duration"`
-	PromptEvalCount    int       `json:"prompt_eval_count"`
-	PromptEvalDuration int       `json:"prompt_eval_duration"`
-	EvalCount          int       `json:"eval_count"`
-	EvalDuration       int64     `json:"eval_duration"`
+	Model      string    `json:"model"`
+	CreatedAt  time.Time `json:"created_at"`
+	Response   string    `json:"response"`
+	Done       bool      `json:"done"`
+	DoneReason string    `json:"done_reason"`
 }
 
 func ReqOllama(url string, ollamaReq Request) (*Response, error) {

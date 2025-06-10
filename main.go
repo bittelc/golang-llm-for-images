@@ -10,8 +10,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-const generateUrl = "http://localhost:11434/api/generate"
-const chatUrl = "http://localhost:11434/api/chat"
+const Url = "http://localhost:11434/api/generate"
 
 func main() {
 	prompt, images, err := input.GetUserInput()
@@ -21,23 +20,19 @@ func main() {
 	}
 
 	start := time.Now()
-	msg := ollama.Message{
-		Role:    "user",
-		Content: prompt,
-		Images:  images,
-	}
 	req := ollama.Request{
-		Model:    "granite3.2-vision:2b",
-		Stream:   false,
-		Messages: []ollama.Message{msg},
+		Images: images,
+		Model:  "granite3.2-vision:2b",
+		Stream: false,
+		Prompt: prompt,
 	}
-	resp, err := ollama.ReqOllama(chatUrl, req)
+	resp, err := ollama.ReqOllama(Url, req)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	if resp.Message.Content != "" {
-		fmt.Println(resp.Message.Content)
+	if resp.Response != "" {
+		fmt.Println(resp.Response)
 	} else {
 		spew.Dump(resp)
 	}
