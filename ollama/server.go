@@ -14,8 +14,11 @@ type Request struct {
 }
 
 type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role      string `json:"role"`
+	Content   string `json:"content"`
+	Images    string `json:"images"`
+	ToolCalls string `json:"tool_calls"`
+	Thinking  string `json:"thinking"`
 }
 
 type Response struct {

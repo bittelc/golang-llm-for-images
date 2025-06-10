@@ -13,17 +13,21 @@ const generateUrl = "http://localhost:11434/api/generate"
 const chatUrl = "http://localhost:11434/api/chat"
 
 func main() {
-	var input string
-	fmt.Print("User: ")
+	var inputText, inputImagePath string
+	fmt.Print("User prompt: ")
 	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadString('\n')
+	inputText, err := reader.ReadString('\n')
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Print("Path to image to attach (optional): ")
+	inputImagePath, err = reader.ReadString('\n')
 	start := time.Now()
 	msg := ollama.Message{
 		Role:    "user",
-		Content: input,
+		Content: inputText,
+		Images:  inputImagePath,
 	}
 	req := ollama.Request{
 		Model:    "llama3.2:latest",
