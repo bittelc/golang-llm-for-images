@@ -2,14 +2,19 @@ package input
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"golang-ai-server/logger"
+	"image/png"
 	"io"
 	"log"
 	"log/slog"
+	"net/http"
 	"os"
 	"strings"
+
+	"github.com/gen2brain/go-fitz"
 )
 
 func GetUserInput() (string, []string, error) {
@@ -21,7 +26,7 @@ func GetUserInput() (string, []string, error) {
 	fmt.Print("User prompt: ")
 	reader := bufio.NewReader(os.Stdin)
 	slog.Debug("Created buffered reader for stdin")
-	
+
 	prompt, err := reader.ReadString('\n')
 	if err != nil {
 		logger.LogError("read_prompt", err, map[string]interface{}{
@@ -53,34 +58,48 @@ func GetUserInput() (string, []string, error) {
 			// Split by comma and trim whitespace
 			paths := strings.Split(imageInput, ",")
 			slog.Debug("Split image paths", "path_count", len(paths), "paths", paths)
-			
+
 			if len(paths) > 5 {
-				logger.LogError("too_many_images", fmt.Errorf("too many images provided"), map[string]interface{}{
-					"count": len(paths),
-					"limit": 5,
-				})
 				return "", nil, fmt.Errorf("too many images provided")
 			}
-			
+
 			for i, path := range paths {
 				trimmedPath := strings.TrimSpace(path)
 				logger.LogProcessingStep("encode_image", map[string]interface{}{
 					"index": i,
-					"path": trimmedPath,
+					"path":  trimmedPath,
 				})
-				
+
 				if trimmedPath != "" {
-					// encodedImage, err := encodeImageToBase64(path)
-					encodedImage, err := encodeImageToStringTryAgain(trimmedPath)
+					mime, err := detectFileType(trimmedPath)
+					if err != nil {
+						// handle error
+						log.Fatal(err)
+					}
+					var encodedImage string
+					switch mime {
+					case "application/pdf":
+						slog.Info("This is a PDF")
+						pageImages, err := convertPdfToImages(trimmedPath)
+						if err != nil {
+							return "", nil, fmt.Errorf("failed to encode pdf into images: %s: error %v", path, err)
+						}
+						return prompt, pageImages, nil
+
+					case "image/png", "image/jpeg":
+						fmt.Println("This is a PNG/JPEG image")
+					default:
+						fmt.Println("Other type:", mime)
+						return "", nil, fmt.Errorf("cannot parse files other than Pdf, jpeg, png: %s", path)
+					}
 					if err != nil {
 						logger.LogError("encode_image", err, map[string]interface{}{
-							"path": trimmedPath,
+							"path":  trimmedPath,
 							"index": i,
 						})
 						return "", nil, fmt.Errorf("failed to encode image %s: %v", path, err)
 					}
 					slog.Debug("Successfully encoded image", "path", trimmedPath, "encoded_length", len(encodedImage))
-					imageByteStrings = append(imageByteStrings, encodedImage)
 				}
 			}
 		}
@@ -90,32 +109,45 @@ func GetUserInput() (string, []string, error) {
 
 	logger.LogProcessingStep("complete_user_input", map[string]interface{}{
 		"prompt_length": len(prompt),
-		"image_count": len(imageByteStrings),
+		"image_count":   len(imageByteStrings),
 	})
 	return prompt, imageByteStrings, err
 }
 
-func base64EncodePdfToByteString(pathToFile string) (string, error) {
-	logger.LogFileOperation("read_pdf", pathToFile, 0)
-	
-	bytes, err := os.ReadFile(pathToFile)
+func convertPdfToImages(filePath string) ([]string, error) {
+	var pdfInB64 []string
+	doc, err := fitz.New(filePath)
 	if err != nil {
-		logger.LogError("read_pdf_file", err, map[string]interface{}{
-			"path": pathToFile,
-		})
-		return "", fmt.Errorf("failed to read PDF file %s: %v", pathToFile, err)
+		return nil, err
 	}
-	
-	logger.LogFileOperation("encode_pdf", pathToFile, int64(len(bytes)))
-	encodedString := base64.StdEncoding.EncodeToString(bytes)
-	
-	slog.Debug("Successfully encoded PDF to base64", "path", pathToFile, "encoded_length", len(encodedString))
-	return encodedString, nil
+	defer doc.Close()
+	for n := range doc.NumPage() {
+		img, err := doc.Image(n)
+		if err != nil {
+			return nil, err
+		}
+		f, err := os.Create(fmt.Sprintf("page_%d.png", n+1))
+		if err != nil {
+			return nil, err
+		}
+		png.Encode(f, img)
+		f.Close()
+
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, img); err != nil {
+			log.Printf("Failed to encode page %d to PNG: %v", n, err)
+			continue
+		}
+
+		pageInB64 := base64.StdEncoding.EncodeToString(buf.Bytes())
+		pdfInB64 = append(pdfInB64, pageInB64)
+	}
+	return pdfInB64, nil
 }
 
 func encodeImageToStringTryAgain(imagePath string) (string, error) {
 	logger.LogFileOperation("read_image", imagePath, 0)
-	
+
 	bytes, err := os.ReadFile(imagePath)
 	if err != nil {
 		logger.LogError("read_image_file", err, map[string]interface{}{
@@ -123,19 +155,34 @@ func encodeImageToStringTryAgain(imagePath string) (string, error) {
 		})
 		return "", err
 	}
-	
+
 	logger.LogFileOperation("encode_image", imagePath, int64(len(bytes)))
 	pdfString := base64.StdEncoding.EncodeToString(bytes)
 
 	// Now you have the entire PDF as a string
-	slog.Debug("Successfully encoded file to base64", "path", imagePath, "encoded_length", len(pdfString))
+	slog.Info("Successfully encoded file to base64", "path", imagePath, "encoded_length", len(pdfString))
 	fmt.Printf("PDF content as string length: %d\n", len(pdfString))
+
 	return pdfString, err
+}
+
+// This works if the incoming pdfString is from
+// pdfString := base64.StdEncoding.EncodeToString(bytes)
+func writeEncodedPdfToFile(pdfString string) {
+	decoded, err := base64.StdEncoding.DecodeString(pdfString)
+	if err != nil {
+		log.Fatalf("Failed to decode pdfString: %v", err)
+	}
+	err = os.WriteFile("encoded.pdf", decoded, 0644)
+	if err != nil {
+		log.Fatalf("Failed to write encoded file: %v", err)
+	}
+	slog.Info("Successfully wrote file")
 }
 
 func encodeImageToString(imagePath string) (string, error) {
 	logger.LogFileOperation("open_image", imagePath, 0)
-	
+
 	f, err := os.Open(imagePath)
 	if err != nil {
 		logger.LogError("open_image_file", err, map[string]interface{}{
@@ -163,9 +210,9 @@ func encodeImageToString(imagePath string) (string, error) {
 	bytesRead, err := io.ReadFull(f, buf)
 	if err != nil {
 		logger.LogError("read_full_file", err, map[string]interface{}{
-			"path": imagePath,
+			"path":           imagePath,
 			"expected_bytes": size,
-			"actual_bytes": bytesRead,
+			"actual_bytes":   bytesRead,
 		})
 		return "", err
 	}
@@ -207,4 +254,21 @@ func encodeImageToBase64(imagePath string) (string, error) {
 	encodedImage := base64.StdEncoding.EncodeToString(imageData)
 	slog.Debug("Successfully encoded image to base64", "path", imagePath, "encoded_length", len(encodedImage))
 	return encodedImage, err
+}
+
+func detectFileType(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	buf := make([]byte, 512) // only need up to the first 512 bytes
+	n, err := f.Read(buf)
+	if err != nil {
+		return "", err
+	}
+
+	kind := http.DetectContentType(buf[:n])
+	return kind, nil
 }
