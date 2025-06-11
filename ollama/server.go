@@ -9,13 +9,18 @@ import (
 )
 
 type Request struct {
-	Model     string   `json:"model"`
-	Prompt    string   `json:"prompt"`
-	Stream    bool     `json:"stream"`
-	Think     bool     `json:"think"`
-	Images    []string `json:"images"`
-	Content   string   `json:"content"`
-	ToolCalls []string `json:"tool_calls"`
+	Model     string       `json:"model"`
+	Prompt    string       `json:"prompt"`
+	Stream    bool         `json:"stream"`
+	Think     bool         `json:"think"`
+	Images    []string     `json:"images"`
+	Content   string       `json:"content"`
+	Options   ModelOptions `json:"options"`
+	ToolCalls []string     `json:"tool_calls"`
+}
+
+type ModelOptions struct {
+	NumCtx int `json:"num_ctx"`
 }
 
 type Response struct {
