@@ -13,6 +13,7 @@ import (
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/gen2brain/go-fitz"
+	"github.com/nguyenthenguyen/docx"
 )
 
 func GetUserInput() (string, []string, error) {
@@ -73,7 +74,12 @@ func GetUserInput() (string, []string, error) {
 			//TODO process jpeg and other images
 			return "", nil, fmt.Errorf("program not yet able to process image file: %s", trimmedPath)
 		case ".docx":
-			//TODO process docx files
+			slog.Info("doc file type detected", "fileType", extension)
+			text, err := extractDocTypeText(trimmedPath)
+			if err != nil {
+				return "", nil, fmt.Errorf("failed to extract text from docx file: %s: error %v", trimmedPath, err)
+			}
+			slog.Info("text extracted from doc", "text", text)
 			return "", nil, fmt.Errorf("program not yet able to process docx or doc files: %s", trimmedPath)
 		default:
 			slog.Error("Other type of file detected. Cannot parse file. Skipping.", "fileType", extension, "filePath", trimmedPath)
@@ -119,4 +125,19 @@ func detectFileType(path string) (string, error) {
 		return "", err
 	}
 	return mtype.Extension(), nil
+}
+
+func extractDocTypeText(path string) (string, error) {
+	doc, err := docx.ReadDocxFile(path)
+	if err != nil {
+		return "", err
+	}
+	defer doc.Close()
+
+	text := doc.Editable().GetContent()
+	if err != nil {
+		return "", err
+	}
+
+	return text, nil
 }

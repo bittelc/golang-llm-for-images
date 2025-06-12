@@ -6,6 +6,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/gabriel-vasile/mimetype v1.4.9
 	github.com/gen2brain/go-fitz v1.24.14
+	github.com/nguyenthenguyen/docx v0.0.0-20230621112118-9c8e795a11db
 )
 
 require (
