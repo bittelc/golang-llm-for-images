@@ -5,14 +5,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"golang-ai-server/logger"
 	"image/png"
 	"log"
 	"log/slog"
-	"net/http"
 	"os"
 	"strings"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/gen2brain/go-fitz"
 )
 
@@ -56,36 +55,33 @@ func GetUserInput() (string, []string, error) {
 			continue // empty path provided
 		}
 
-		mime, err := detectFileType(trimmedPath)
+		extension, err := detectFileType(trimmedPath)
 		if err != nil {
 			log.Fatal(err)
 		}
 		var encodedImage string
-		switch mime {
-		case "application/pdf":
+		switch extension {
+		case ".pdf":
 			slog.Info("This is a PDF", "trimmedPath", trimmedPath)
 			pageImages, err := convertPdfToImages(trimmedPath)
 			if err != nil {
-				return "", nil, fmt.Errorf("failed to encode pdf into images: %s: error %v", path, err)
+				return "", nil, fmt.Errorf("failed to encode pdf into images: %s: error %v", trimmedPath, err)
 			}
-			return prompt, pageImages, nil
-		case "image/png", "image/jpeg", "image/jpg":
-			slog.Info("png, jpeg, or jpg image detected", "fileType", mime)
+			imageByteStrings = append(imageByteStrings, pageImages...)
+		case ".png", ".jpg", ".jpeg":
+			slog.Info("png, jpg, or jpeg image detected", "fileType", extension)
 			//TODO process jpeg and other images
+			return "", nil, fmt.Errorf("program not yet able to process image file: %s", trimmedPath)
+		case "docx":
+			//TODO process docx files
+			return "", nil, fmt.Errorf("program not yet able to process docx or doc files: %s", trimmedPath)
 		default:
-			slog.Info("Other type of file detected:", "fileType", mime)
-			return "", nil, fmt.Errorf("cannot parse files other than Pdf, jpeg, png: %s", path)
+			slog.Error("Other type of file detected. Cannot parse file. Skipping.", "fileType", extension, "filePath", trimmedPath)
+			continue
 		}
-		if err != nil {
-			return "", nil, fmt.Errorf("failed to encode file %s: %v", path, err)
-		}
-		slog.Debug("Successfully encoded image", "path", trimmedPath, "encoded_length", len(encodedImage))
+		slog.Debug("Completed encoding of image", "path", trimmedPath, "encoded_length", len(encodedImage))
 	}
 
-	logger.LogProcessingStep("complete_user_input", map[string]interface{}{
-		"prompt_length": len(prompt),
-		"image_count":   len(imageByteStrings),
-	})
 	return prompt, imageByteStrings, err
 }
 
@@ -96,6 +92,9 @@ func convertPdfToImages(filePath string) ([]string, error) {
 		return nil, err
 	}
 	defer doc.Close()
+	if doc.NumPage() > 3 {
+		return nil, fmt.Errorf("attached PDF is too long. Documents of more than 3 pages are not allowed.")
+	}
 	for n := range doc.NumPage() {
 		img, err := doc.Image(n)
 		if err != nil {
@@ -115,18 +114,9 @@ func convertPdfToImages(filePath string) ([]string, error) {
 }
 
 func detectFileType(path string) (string, error) {
-	f, err := os.Open(path)
+	mtype, err := mimetype.DetectFile(path)
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
-
-	buf := make([]byte, 512) // only need up to the first 512 bytes
-	n, err := f.Read(buf)
-	if err != nil {
-		return "", err
-	}
-
-	kind := http.DetectContentType(buf[:n])
-	return kind, nil
+	return mtype.Extension(), nil
 }
