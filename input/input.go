@@ -72,7 +72,7 @@ func GetUserInput() (string, []string, error) {
 			slog.Info("png, jpg, or jpeg image detected", "fileType", extension)
 			//TODO process jpeg and other images
 			return "", nil, fmt.Errorf("program not yet able to process image file: %s", trimmedPath)
-		case "docx":
+		case ".docx":
 			//TODO process docx files
 			return "", nil, fmt.Errorf("program not yet able to process docx or doc files: %s", trimmedPath)
 		default:
