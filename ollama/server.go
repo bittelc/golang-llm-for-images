@@ -14,7 +14,6 @@ type Request struct {
 	Stream    bool         `json:"stream"`
 	Think     bool         `json:"think"`
 	Images    []string     `json:"images"`
-	Content   string       `json:"content"`
 	Options   ModelOptions `json:"options"`
 	ToolCalls []string     `json:"tool_calls"`
 }

@@ -26,7 +26,6 @@ func main() {
 	slog.Debug("Configuration", "ollama_url", Url)
 
 	// Get user input
-	slog.Info("Requesting user input")
 	prompt, images, err := input.GetUserInput()
 	if err != nil {
 		logger.LogError("get_user_input", err, map[string]interface{}{
@@ -35,23 +34,17 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	logger.LogUserInput("prompt_and_images", len(prompt)+len(images))
 	slog.Info("Successfully received user input", "prompt_length", len(prompt), "images_count", len(images))
 
 	// Prepare Ollama request
 	start := time.Now()
-	logger.LogProcessingStep("prepare_ollama_request", map[string]interface{}{
-		"start_time": start,
-		"model":      "granite3.2-vision:2b",
-	})
-
 	req := ollama.Request{
 		Images: images,
 		Model:  "granite3.2-vision:2b",
 		Stream: false,
 		Prompt: prompt,
 		Options: ollama.ModelOptions{
-			NumCtx: 8192, // Probs the max for an M3 MacBook with 8GB RAM
+			NumCtx: 16384, // Probs the max for an M3 MacBook with 8GB RAM
 		},
 	}
 	slog.Info("Created Ollama request",
@@ -86,5 +79,7 @@ func main() {
 	}
 
 	slog.Info("Application completed successfully", "total_duration", totalDuration)
-	fmt.Printf("Completed in %v", totalDuration)
+
+	// Generated output from response is the final product
+	fmt.Println("\n", resp.Response)
 }
