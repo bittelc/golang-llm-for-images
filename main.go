@@ -51,7 +51,7 @@ func main() {
 		Stream: false,
 		Prompt: prompt,
 		Options: ollama.ModelOptions{
-			NumCtx: 102123,
+			NumCtx: 8192, // Probs the max for an M3 MacBook with 8GB RAM
 		},
 	}
 	slog.Info("Created Ollama request",
